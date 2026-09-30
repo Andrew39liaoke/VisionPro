@@ -16,7 +16,7 @@ struct ConnectionSettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("http://192.168.1.10:8889/d435i/whep", text: $address)
+                    TextField("http://10.252.68.17:8889/d435i/whep", text: $address)
                         .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                         .accessibilityLabel("WHEP 视频地址")
                 } header: { Text("视频地址") } footer: {

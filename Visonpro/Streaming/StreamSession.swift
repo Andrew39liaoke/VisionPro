@@ -5,6 +5,8 @@ import StreamingCore
 
 @MainActor @Observable
 final class StreamSession {
+    private static let defaultEndpoint = "http://10.252.68.17:8889/d435i/whep"
+
     private(set) var state: StreamState = .idle
     private(set) var errorMessage: String?
     private(set) var metrics = StreamMetrics()
@@ -31,7 +33,9 @@ final class StreamSession {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        endpointText = defaults.string(forKey: "lastSuccessfulEndpoint") ?? defaults.string(forKey: "configuredEndpoint") ?? ""
+        endpointText = defaults.string(forKey: "lastSuccessfulEndpoint")
+            ?? defaults.string(forKey: "configuredEndpoint")
+            ?? Self.defaultEndpoint
         fillVideo = defaults.bool(forKey: "fillVideo")
     }
 

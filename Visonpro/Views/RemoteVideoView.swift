@@ -65,6 +65,10 @@ final class MetalVideoView: MTKView {
         }
         image = image.oriented(forExifOrientation: exif)
         image = image.transformed(by: CGAffineTransform(translationX: -image.extent.minX, y: -image.extent.minY))
+        // Core Image and an MTKView drawable use opposite vertical origins. Rendering the
+        // CIImage directly into the Metal texture otherwise displays every frame upside down.
+        image = image.transformed(by: CGAffineTransform(scaleX: 1, y: -1))
+        image = image.transformed(by: CGAffineTransform(translationX: 0, y: -image.extent.minY))
         let x = drawableSize.width / image.extent.width, y = drawableSize.height / image.extent.height
         let scale = fill ? max(x, y) : min(x, y)
         image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
