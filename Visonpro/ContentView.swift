@@ -4,6 +4,8 @@ import StreamingCore
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var session = StreamSession()
+    @State private var pointCloudSession = PointCloudPageSession()
+    @State private var viewportLayout = ViewportLayoutState()
     @State private var showingSettings = false
     #if DEBUG
     @State private var diagnosticURL: URL?
@@ -12,18 +14,19 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            ZStack {
-                Color.black
-                if let video = session.video { RemoteVideoView(video: video, fill: session.fillVideo) }
-                if session.state != .playing { connectionOverlay }
+            DualStreamViewport(layout: viewportLayout) {
+                videoPanel
+            } pointCloud: {
+                PointCloudPanel(session: pointCloudSession)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18))
             .padding(.horizontal, 20)
             footer
             if session.showMetrics { metricsPanel }
         }
         .frame(minWidth: 720, minHeight: 520)
-        .sheet(isPresented: $showingSettings) { ConnectionSettingsView(session: session) }
+        .sheet(isPresented: $showingSettings) {
+            ConnectionSettingsView(session: session, pointCloudSession: pointCloudSession)
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
             session.sceneChanged(phase)
             if session.endpointText.isEmpty { showingSettings = true }
@@ -36,12 +39,25 @@ struct ContentView: View {
         #endif
     }
 
+    private var videoPanel: some View {
+        ZStack {
+            Color.black
+            if let video = session.video {
+                RemoteVideoView(video: video, fill: session.fillVideo)
+            }
+            if session.state != .playing { connectionOverlay }
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 14) {
-            Image(systemName: "video.fill").font(.title2).foregroundStyle(.cyan)
+            Image(systemName: viewportLayout.primary == .video ? "video.fill" : "point.3.connected.trianglepath.dotted")
+                .font(.title2)
+                .foregroundStyle(.cyan)
             VStack(alignment: .leading, spacing: 3) {
-                Text("D435i RGB").font(.title3.bold())
-                Text("机器人实时视角").font(.caption).foregroundStyle(.secondary)
+                Text(viewportLayout.primary == .video ? "D435i RGB" : "实时点云")
+                    .font(.title3.bold())
+                Text("机器人视频与点云").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Circle().fill(session.state == .playing ? .green : .orange).frame(width: 8, height: 8)
@@ -76,6 +92,8 @@ struct ContentView: View {
             Spacer()
             Button { session.showMetrics.toggle() } label: { Image(systemName: "chart.bar.xaxis") }
                 .accessibilityLabel("显示连接统计")
+            Button { pointCloudSession.reload() } label: { Image(systemName: "arrow.clockwise") }
+                .accessibilityLabel("重新加载点云网页")
             Button { session.fillVideo.toggle() } label: {
                 Image(systemName: session.fillVideo ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
             }.accessibilityLabel(session.fillVideo ? "完整显示视频" : "填满视频区域")

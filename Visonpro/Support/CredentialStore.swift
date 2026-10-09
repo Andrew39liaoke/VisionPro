@@ -11,7 +11,9 @@ enum CredentialStore {
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound { return .none }
+        // An unsigned simulator build has no Keychain entitlement. Treat that as
+        // "no stored credential" so unauthenticated local streams still work.
+        if status == errSecItemNotFound || status == errSecMissingEntitlement { return .none }
         guard status == errSecSuccess, let data = result as? Data else { throw StoreError(status: status) }
         return try JSONDecoder().decode(StreamCredential.self, from: data)
     }
@@ -20,7 +22,9 @@ enum CredentialStore {
         let query = baseQuery(endpoint)
         if credential == .none {
             let status = SecItemDelete(query as CFDictionary)
-            guard status == errSecSuccess || status == errSecItemNotFound else { throw StoreError(status: status) }
+            guard status == errSecSuccess || status == errSecItemNotFound || status == errSecMissingEntitlement else {
+                throw StoreError(status: status)
+            }
             return
         }
         let data = try JSONEncoder().encode(credential)

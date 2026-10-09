@@ -5,6 +5,58 @@ import StreamingCore
 
 @MainActor
 final class StreamingTests: XCTestCase {
+    func testPointCloudPageURLAcceptsLocalHTTPAddress() throws {
+        let url = try PointCloudPageSession.pageURL(from: "  HTTP://192.168.3.21:8080/  ")
+        XCTAssertEqual(url.absoluteString, "http://192.168.3.21:8080/")
+    }
+
+    func testPointCloudPageURLRejectsUnsupportedScheme() {
+        XCTAssertThrowsError(try PointCloudPageSession.pageURL(from: "ws://192.168.3.21:8765/")) { error in
+            XCTAssertEqual(error as? PointCloudPageError, .unsupportedScheme)
+        }
+    }
+
+    func testViewportSwapPersistsAndIgnoresRepeatedTapDuringAnimation() async throws {
+        let suite = "ViewportLayoutStateTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+
+        let layout = ViewportLayoutState(defaults: defaults)
+        XCTAssertEqual(layout.primary, .video)
+
+        layout.swap()
+        layout.swap()
+
+        XCTAssertEqual(layout.primary, .pointCloud)
+        XCTAssertTrue(layout.isSwapping)
+        let restoredLayout = ViewportLayoutState(defaults: defaults)
+        XCTAssertEqual(restoredLayout.primary, .pointCloud)
+
+        try await Task.sleep(for: .milliseconds(450))
+        XCTAssertFalse(layout.isSwapping)
+        withExtendedLifetime((layout, restoredLayout)) {}
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    func testPictureInPictureDragClampsToViewportAndRestoresPosition() async {
+        let suite = "PictureInPicturePlacementTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let layout = ViewportLayoutState(defaults: defaults)
+        let container = CGSize(width: 680, height: 420)
+        let pipSize = CGSize(width: 220, height: 124)
+
+        layout.movePip(by: CGSize(width: -1000, height: -1000), in: container, pipSize: pipSize, inset: 18)
+        XCTAssertEqual(layout.pipCenter(in: container, pipSize: pipSize, inset: 18), CGPoint(x: 128, y: 80))
+
+        let restored = ViewportLayoutState(defaults: defaults)
+        XCTAssertEqual(restored.pipPosition, CGPoint(x: 0, y: 0))
+
+        restored.movePip(by: CGSize(width: 1000, height: 1000), in: container, pipSize: pipSize, inset: 18)
+        XCTAssertEqual(restored.pipCenter(in: container, pipSize: pipSize, inset: 18), CGPoint(x: 552, y: 340))
+        await Task.yield()
+        withExtendedLifetime((layout, restored)) {}
+        defaults.removePersistentDomain(forName: suite)
+    }
+
     func testNativeOfferIsReceiveOnlyH264Video() async throws {
         let engine = NativeWebRTCEngine()
         defer { engine.close() }

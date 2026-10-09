@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>用于连接局域网中的机器人摄像头并显示实时视频。</string>
+	<string>用于连接局域网中的机器人摄像头和点云服务，并显示实时视频与点云。</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

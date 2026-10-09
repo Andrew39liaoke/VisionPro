@@ -4,7 +4,9 @@ import StreamingCore
 struct ConnectionSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     let session: StreamSession
+    let pointCloudSession: PointCloudPageSession
     @State private var address = ""
+    @State private var pointCloudAddress = ""
     @State private var authentication = "none"
     @State private var username = ""
     @State private var password = ""
@@ -21,6 +23,13 @@ struct ConnectionSettingsView: View {
                         .accessibilityLabel("WHEP 视频地址")
                 } header: { Text("视频地址") } footer: {
                     Text("填写 Ubuntu 主机的地址，末尾保留 /d435i/whep。首次连接请允许访问本地网络。")
+                }
+                Section {
+                    TextField("http://192.168.3.21:8080/", text: $pointCloudAddress)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                        .accessibilityLabel("点云网页地址")
+                } header: { Text("点云网页地址") } footer: {
+                    Text("网页内的点云服务器连接参数仍在网页中填写。将点云切换为主视图后即可正常输入。")
                 }
                 Section("访问认证") {
                     Picker("认证方式", selection: $authentication) {
@@ -47,19 +56,31 @@ struct ConnectionSettingsView: View {
                         }.navigationTitle("开源组件许可")
                     }
                 }
-                if let message { Section { Text(message).foregroundStyle(.red) } }
             }
             .navigationTitle("连接设置")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存并连接") { save() }.disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("保存并连接") { save() }
+                        .disabled(
+                            address.trimmingCharacters(in: .whitespaces).isEmpty ||
+                            pointCloudAddress.trimmingCharacters(in: .whitespaces).isEmpty
+                        )
                 }
             }
         }
-        .frame(width: 640, height: 620)
+        .frame(width: 640, height: 700)
+        .alert("无法保存连接设置", isPresented: Binding(
+            get: { message != nil },
+            set: { if !$0 { message = nil } }
+        )) {
+            Button("好", role: .cancel) { message = nil }
+        } message: {
+            Text(message ?? "请检查连接参数。")
+        }
         .onAppear {
             address = session.endpointText
+            pointCloudAddress = pointCloudSession.endpointText
             fill = session.fillVideo
             guard !address.isEmpty else { return }
             do {
@@ -87,7 +108,9 @@ struct ConnectionSettingsView: View {
         default: credential = .none
         }
         do {
+            let pointCloudURL = try PointCloudPageSession.pageURL(from: pointCloudAddress)
             try session.saveSettings(url: address, credential: credential, fill: fill)
+            pointCloudSession.apply(url: pointCloudURL)
             dismiss()
         } catch { message = error.localizedDescription }
     }

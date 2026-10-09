@@ -13,7 +13,7 @@ struct VisonproApp: App {
         WindowGroup {
             ContentView()
         }
-        .defaultSize(width: 960, height: 680)
+        .defaultSize(width: 960, height: 540)
         .windowResizability(.contentMinSize)
     }
 }
